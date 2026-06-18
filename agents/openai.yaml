@@ -1,0 +1,4 @@
+interface:
+  display_name: "Codex Account Switcher"
+  short_description: "Switch Codex auth profiles safely"
+  default_prompt: "Use $codex-account-switcher to set up, list, switch, import, or recover Codex auth profiles safely."
