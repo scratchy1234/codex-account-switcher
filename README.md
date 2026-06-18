@@ -121,6 +121,8 @@ The skill includes `references/onboarding.md` with preset questions for first in
 
 ```text
 codex-account-switcher/
+├── README.md                        # public setup guide
+├── LICENSE                          # MIT license
 ├── SKILL.md                         # Codex skill entry point
 ├── agents/
 │   └── openai.yaml                  # UI metadata
@@ -133,16 +135,16 @@ codex-account-switcher/
 
 ## FAQ
 
-**Q: Does this upload my auth data anywhere?**  
+**Q: Does this upload my auth data anywhere?**
 A: No. It only reads and writes local files under your Codex config directory.
 
-**Q: Can it refresh expired logins?**  
+**Q: Can it refresh expired logins?**
 A: No. It stores and switches login state. If a provider invalidates a token, log in manually and capture the profile again.
 
-**Q: What is `--no-sync` for?**  
+**Q: What is `--no-sync` for?**
 A: It prevents the current live auth from being copied back into its saved profile before switching. Use it when the current auth may be corrupted, expired, or not worth preserving.
 
-**Q: Can I test without touching my real Codex login?**  
+**Q: Can I test without touching my real Codex login?**
 A: Yes. Set `CODEX_HOME` to a temporary directory, then run the commands there.
 
 ## License
