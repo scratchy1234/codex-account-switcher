@@ -1,48 +1,49 @@
-# codex-account-switcher
+# Codex Account Switcher
 
-Safely capture, import, switch, and roll back local Codex auth profiles without copying tokens into chat.
+[中文说明](README.zh-CN.md)
 
-## What It Does
+Portable account profile switching for Codex. Capture the current login, import a saved auth JSON, switch by profile or slot, and roll back safely without pasting credentials into chat.
 
-```text
-Codex auth.json -> reusable local profiles -> numbered slots -> safe switch + rollback
-```
+## Why
 
-A compact local workflow for people who use multiple Codex accounts on one machine:
+Codex stores local login state in an `auth.json` file. If you use multiple Codex accounts on the same machine, switching accounts manually is slow and error-prone. This skill wraps that workflow in a small local CLI with three rules:
 
-| Phase | What | Required? |
-|-------|------|-----------|
-| **Capture** | Save the currently logged-in Codex `auth.json` as a named profile | Optional |
-| **Import** | Import a saved Codex auth JSON or CPA-style JSON into a profile | Optional |
-| **Switch** | Replace the active Codex auth with a chosen profile or slot | Core |
-| **Recover** | Roll back to a previous backup or prepare a manual login slot | Core |
+- credentials stay on disk;
+- every switch creates a rollback backup;
+- commands print only non-secret summaries.
 
-The switcher is designed around one constraint: credentials stay on disk and out of model-visible output. Commands print only non-secret summaries.
+## Features
+
+- Capture the current Codex login into a reusable profile.
+- Import normal Codex `auth.json` files or CPA-style JSON exports.
+- Assign profiles to numeric slots, then switch with one command.
+- Prepare a manual login slot when a profile needs to be refreshed by logging in again.
+- Roll back to the latest or a specific backup after a bad switch.
+- Run isolated tests with a temporary `CODEX_HOME`.
+- Use onboarding questions from `references/onboarding.md` when the runtime supports an ask-user-question tool.
 
 ## Prerequisites
 
-- Codex using a local `auth.json` file, normally under `~/.codex/auth.json`
-- Node.js 18+
-- A local terminal with filesystem access to the Codex config directory
+- macOS, Linux, or another local environment where Codex uses a local `auth.json`.
+- Node.js 18 or newer.
+- A terminal with read/write access to the Codex config directory.
 
-## Quick Start
+## Install
 
-### 1. Install the Skill
-
-Clone directly into your Codex skills directory:
+Clone the skill into your Codex skills directory:
 
 ```bash
 git clone https://github.com/scratchy1234/codex-account-switcher \
   ~/.codex/skills/codex-account-switcher
 ```
 
-If you install somewhere else, point the skill at that location:
+If you install it somewhere else, point the skill at that folder:
 
 ```bash
 export CODEX_ACCOUNT_SWITCHER_SKILL_DIR="/path/to/codex-account-switcher"
 ```
 
-### 2. Check the Install
+Verify the install:
 
 ```bash
 cd ~/.codex/skills/codex-account-switcher
@@ -50,38 +51,33 @@ cd ~/.codex/skills/codex-account-switcher
 node scripts/codex-account-switcher.mjs doctor
 ```
 
-### 3. Capture the Current Login
+## Quick Start
 
-Use this after you are already logged in through Codex:
+Capture the account that is currently logged in through Codex:
 
 ```bash
 node scripts/codex-account-switcher.mjs capture work-main --slot 1 --dry-run
 node scripts/codex-account-switcher.mjs capture work-main --slot 1
-node scripts/codex-account-switcher.mjs list
 ```
 
-### 4. Import a Saved JSON
+Import another saved JSON:
 
 ```bash
 node scripts/codex-account-switcher.mjs import-auth-json backup-account ./auth.json --slot 2 --dry-run
 node scripts/codex-account-switcher.mjs import-auth-json backup-account ./auth.json --slot 2
 ```
 
-The importer accepts normal Codex auth JSON and CPA-style JSON with token fields. It stores a normalized profile without printing credential contents.
+List saved profiles:
 
-### 5. Switch and Recover
+```bash
+node scripts/codex-account-switcher.mjs list
+```
+
+Switch to a profile or slot:
 
 ```bash
 node scripts/codex-account-switcher.mjs switch --dry-run 1
 node scripts/codex-account-switcher.mjs switch 1
-```
-
-If a switch goes wrong:
-
-```bash
-node scripts/codex-account-switcher.mjs backups
-node scripts/codex-account-switcher.mjs rollback --dry-run latest
-node scripts/codex-account-switcher.mjs rollback latest
 ```
 
 If the current live auth may be broken, skip syncing it back before switching:
@@ -90,62 +86,114 @@ If the current live auth may be broken, skip syncing it back before switching:
 node scripts/codex-account-switcher.mjs switch --no-sync <known-good-profile-or-slot>
 ```
 
-## How It Works
+## Recovery
 
-The CLI keeps profile state under your `CODEX_HOME`:
+Show backups:
+
+```bash
+node scripts/codex-account-switcher.mjs backups
+```
+
+Roll back:
+
+```bash
+node scripts/codex-account-switcher.mjs rollback --dry-run latest
+node scripts/codex-account-switcher.mjs rollback latest
+```
+
+Prepare a manual login refresh:
+
+```bash
+node scripts/codex-account-switcher.mjs login-slot --dry-run 1
+node scripts/codex-account-switcher.mjs login-slot 1
+```
+
+After logging in through Codex, run the `after_login=...` command printed by the CLI. For an existing slot, it includes `--replace` so the refreshed login state updates the saved profile.
+
+## Storage Layout
+
+By default, the CLI stores state under `CODEX_HOME`, usually `~/.codex`:
 
 ```text
 ~/.codex/
 ├── auth.json                         # active Codex auth
-└── account-profiles/
+└── account-switcher/
     ├── profiles/                     # saved profile auth files
     ├── backups/                      # automatic active-auth backups
-    └── manifest.json                 # profile names, slots, and active pointer
+    ├── profiles.json                 # profile names and slots
+    ├── active-profile                # last switched profile
+    └── last-backup                   # latest rollback target
 ```
 
-Before changing `auth.json`, the switcher creates a timestamped backup. Read-only commands such as `doctor`, `list`, and `backups` do not create profile state. Mutating commands support `--dry-run` so you can preview what would happen first.
+Use a temporary `CODEX_HOME` when testing:
 
-## Onboarding Flow
-
-The skill includes `references/onboarding.md` with preset questions for first install, switching, and recovery. In Codex runtimes that provide an ask-user-question tool, the skill can use those questions as a lightweight setup wizard.
+```bash
+CODEX_HOME="$(mktemp -d)" node scripts/codex-account-switcher.mjs doctor
+```
 
 ## Safety Boundaries
 
 - Do not paste tokens, cookies, API keys, auth headers, full env values, or full `auth.json` contents into chat.
-- Use local file paths for JSON imports.
-- Use `--dry-run` before overwriting an occupied profile, preparing a login slot, switching, or rolling back when unsure.
-- Keep at least one known-good profile or backup before experimenting.
-- Restart Codex manually after a switch if the running app keeps the previous login in memory.
+- Ask for local file paths when importing JSON.
+- Use `--dry-run` before overwriting profiles, switching accounts, preparing login slots, or rolling back.
+- Keep at least one known-good profile or backup.
+- Restart Codex manually after switching if the running app keeps the previous login in memory.
+
+## CLI Reference
+
+```text
+codex-account-switcher init
+codex-account-switcher doctor
+codex-account-switcher list
+codex-account-switcher current
+codex-account-switcher capture <profile> [--slot <number>] [--replace] [--dry-run]
+codex-account-switcher import-auth-json <profile> <json-file-or-folder> [--slot <number>] [--replace] [--dry-run]
+codex-account-switcher switch [--no-sync] [--dry-run] <profile-or-slot>
+codex-account-switcher login-slot [--dry-run] <profile-or-slot>
+codex-account-switcher backups
+codex-account-switcher rollback [--dry-run] [latest|backup-path]
+codex-account-switcher path
+codex-account-switcher questions
+```
 
 ## Project Structure
 
 ```text
 codex-account-switcher/
-├── README.md                        # public setup guide
-├── LICENSE                          # MIT license
-├── SKILL.md                         # Codex skill entry point
+├── README.md
+├── README.zh-CN.md
+├── LICENSE
+├── SKILL.md
 ├── agents/
-│   └── openai.yaml                  # UI metadata
+│   └── openai.yaml
 ├── references/
-│   └── onboarding.md                # setup/switch/recovery question flow
+│   └── onboarding.md
 └── scripts/
-    ├── codex-account-switcher.mjs   # portable account switcher CLI
-    └── run-tests.sh                 # isolated CODEX_HOME test suite
+    ├── codex-account-switcher.mjs
+    └── run-tests.sh
 ```
 
 ## FAQ
 
-**Q: Does this upload my auth data anywhere?**
-A: No. It only reads and writes local files under your Codex config directory.
+**Does this upload auth data anywhere?**
 
-**Q: Can it refresh expired logins?**
-A: No. It stores and switches login state. If a provider invalidates a token, log in manually and capture the profile again.
+No. It reads and writes local files only.
 
-**Q: What is `--no-sync` for?**
-A: It prevents the current live auth from being copied back into its saved profile before switching. Use it when the current auth may be corrupted, expired, or not worth preserving.
+**Can it refresh expired logins automatically?**
 
-**Q: Can I test without touching my real Codex login?**
-A: Yes. Set `CODEX_HOME` to a temporary directory, then run the commands there.
+No. If a provider invalidates a token, log in manually and capture the profile again.
+
+**What is `--no-sync` for?**
+
+It prevents the current live auth from being copied back into its saved profile before switching. Use it for recovery when the current auth may be corrupted or expired.
+
+**Can I test it without touching my real Codex login?**
+
+Yes. Set `CODEX_HOME` to a temporary directory before running commands.
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=scratchy1234/codex-account-switcher&type=Date)](https://star-history.com/#scratchy1234/codex-account-switcher&Date)
 
 ## License
 

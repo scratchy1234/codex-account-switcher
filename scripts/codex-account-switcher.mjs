@@ -77,6 +77,7 @@ function saveManifest(manifest) {
 function profileName(raw) {
   const name = String(raw || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-");
   if (!name || name === "." || name === ".." || name.startsWith(".")) die("invalid profile name");
+  if (name.length > 80) die("profile name must be 80 characters or fewer");
   return name;
 }
 
@@ -132,7 +133,12 @@ function normalizeAuth(input) {
   const source = input?.accounts && Array.isArray(input.accounts) ? input.accounts[0] : input;
   if (source?.auth_mode && source?.tokens) return source;
   const tokens = source?.tokens || source || {};
-  if (tokens.access_token || tokens.refresh_token || tokens.id_token || tokens.account_id) {
+  if (
+    tokens.access_token || tokens.accessToken ||
+    tokens.refresh_token || tokens.refreshToken ||
+    tokens.id_token || tokens.idToken ||
+    tokens.account_id || tokens.accountId
+  ) {
     return {
       auth_mode: "chatgpt",
       tokens: {
@@ -199,12 +205,18 @@ function resolveProfile(value) {
 function backupCurrent(label = "auth") {
   if (!fs.existsSync(AUTH_PATH)) return "";
   ensureDirs();
-  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(/\..+/, "").replace("T", "-");
-  const backup = path.join(BACKUP_ROOT, `${label}.${stamp}.json`);
+  const stamp = new Date().toISOString().replace(/[-:]/g, "").replace(".", "-").replace("T", "-").replace("Z", "");
+  const backup = path.join(BACKUP_ROOT, `${label}.${stamp}.${process.pid}.json`);
   fs.copyFileSync(AUTH_PATH, backup);
   fs.chmodSync(backup, 0o600);
   writePrivateFile(LAST_BACKUP_PATH, `${backup}\n`);
   return backup;
+}
+
+function captureHint(profile, slot, replace) {
+  const slotPart = slot == null ? "" : ` --slot ${slot}`;
+  const replacePart = replace ? " --replace" : "";
+  return `node scripts/codex-account-switcher.mjs capture ${profile}${slotPart}${replacePart}`;
 }
 
 function syncActiveProfile() {
@@ -356,14 +368,21 @@ function commandLoginSlot(args) {
   ensureDirs();
   const raw = rest[0];
   const manifest = loadManifest();
-  const bySlot = /^\d+$/.test(raw) ? manifest.accounts.find((item) => String(item.slot) === raw) : null;
-  const profile = bySlot?.profile || profileName(raw);
+  const isNumeric = /^\d+$/.test(raw);
+  const bySlot = isNumeric ? manifest.accounts.find((item) => String(item.slot) === raw) : null;
+  if (isNumeric && !bySlot) die(`slot ${raw} is not configured`);
+  const requestedProfile = bySlot?.profile || profileName(raw);
+  const existingProfile = manifest.accounts.find((item) => item.profile === requestedProfile);
+  const profile = requestedProfile;
+  const slot = bySlot?.slot ?? existingProfile?.slot ?? options.slot;
+  const replaceNeeded = Boolean(existingProfile);
+  const afterLogin = captureHint(profile, slot, replaceNeeded);
   if (options.dryRun) {
     console.log(`would_prepare_login_slot=${profile}`);
     console.log(`would_backup_current=${fs.existsSync(AUTH_PATH) ? "yes" : "no"}`);
     console.log(`would_remove_auth=${fs.existsSync(AUTH_PATH) ? "yes" : "no"}`);
     console.log(`would_clear_active=${fs.existsSync(ACTIVE_PATH) ? "yes" : "no"}`);
-    console.log(`after_login=node scripts/codex-account-switcher.mjs capture ${profile}`);
+    console.log(`after_login=${afterLogin}`);
     return;
   }
   const backup = backupCurrent(`auth-login-slot-${profile}`);
@@ -371,7 +390,7 @@ function commandLoginSlot(args) {
   if (fs.existsSync(ACTIVE_PATH)) fs.rmSync(ACTIVE_PATH);
   console.log(`prepared_login_slot=${profile}`);
   if (backup) console.log(`backup=${backup}`);
-  console.log(`after_login=node scripts/codex-account-switcher.mjs capture ${profile}`);
+  console.log(`after_login=${afterLogin}`);
 }
 
 function commandBackups() {

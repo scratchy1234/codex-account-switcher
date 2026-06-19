@@ -19,6 +19,12 @@ assert_contains() {
   /usr/bin/grep -q -- "$pattern" "$file" || fail "missing pattern '$pattern' in $file"
 }
 
+assert_fails() {
+  if "$@"; then
+    fail "command unexpectedly succeeded: $*"
+  fi
+}
+
 write_auth() {
   local file="$1"
   local account="$2"
@@ -68,9 +74,29 @@ assert_contains "$TEST_ROOT/import-dry.out" '^would_import=beta-dry'
 node "$SWITCHER" import-auth-json beta "$TEST_ROOT/beta.json" --slot 2 >"$TEST_ROOT/import-beta.out"
 assert_contains "$TEST_ROOT/import-beta.out" '^imported=beta'
 
+mkdir -p "$TEST_ROOT/cpa-folder"
+node - <<'NODE' "$TEST_ROOT/cpa-folder/cpa.json"
+const fs = require("fs");
+const file = process.argv[2];
+const auth = {
+  accounts: [{
+    tokens: {
+      idToken: "test.gamma.id",
+      accessToken: "test.gamma.access",
+      refreshToken: "test.gamma.refresh",
+      accountId: "gamma",
+    },
+  }],
+};
+fs.writeFileSync(file, `${JSON.stringify(auth, null, 2)}\n`);
+NODE
+node "$SWITCHER" import-auth-json gamma "$TEST_ROOT/cpa-folder" --slot 3 >"$TEST_ROOT/import-gamma.out"
+assert_contains "$TEST_ROOT/import-gamma.out" '^imported=gamma'
+
 node "$SWITCHER" list >"$TEST_ROOT/list.out"
 assert_contains "$TEST_ROOT/list.out" 'alpha'
 assert_contains "$TEST_ROOT/list.out" 'beta'
+assert_contains "$TEST_ROOT/list.out" 'gamma'
 
 cp "$CODEX_HOME/auth.json" "$TEST_ROOT/auth.before-switch-dry.json"
 node "$SWITCHER" switch --dry-run 2 >"$TEST_ROOT/switch-dry.out"
@@ -85,14 +111,19 @@ assert_contains "$TEST_ROOT/current.out" '^active=beta'
 cp "$CODEX_HOME/auth.json" "$TEST_ROOT/auth.before-login-slot-dry.json"
 node "$SWITCHER" login-slot --dry-run gamma >"$TEST_ROOT/login-slot-dry.out"
 assert_contains "$TEST_ROOT/login-slot-dry.out" '^would_prepare_login_slot=gamma'
+assert_contains "$TEST_ROOT/login-slot-dry.out" 'after_login=node scripts/codex-account-switcher.mjs capture gamma --slot 3 --replace'
 cmp -s "$CODEX_HOME/auth.json" "$TEST_ROOT/auth.before-login-slot-dry.json" || fail "login-slot --dry-run changed auth"
+
+assert_fails node "$SWITCHER" login-slot --dry-run 777 >"$TEST_ROOT/login-slot-missing.out" 2>&1
+assert_contains "$TEST_ROOT/login-slot-missing.out" 'slot 777 is not configured'
 
 node "$SWITCHER" rollback --dry-run latest >"$TEST_ROOT/rollback-dry.out"
 assert_contains "$TEST_ROOT/rollback-dry.out" '^would_rollback=ok'
 cmp -s "$CODEX_HOME/auth.json" "$TEST_ROOT/auth.before-login-slot-dry.json" || fail "rollback --dry-run changed auth"
 
-node "$SWITCHER" login-slot gamma >"$TEST_ROOT/login-slot.out"
+node "$SWITCHER" login-slot 3 >"$TEST_ROOT/login-slot.out"
 assert_contains "$TEST_ROOT/login-slot.out" '^prepared_login_slot=gamma'
+assert_contains "$TEST_ROOT/login-slot.out" 'after_login=node scripts/codex-account-switcher.mjs capture gamma --slot 3 --replace'
 [[ ! -f "$CODEX_HOME/auth.json" ]] || fail "login-slot did not clear auth"
 
 node "$SWITCHER" rollback latest >"$TEST_ROOT/rollback.out"

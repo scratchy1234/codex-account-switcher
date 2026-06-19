@@ -78,10 +78,10 @@ node "$ACCOUNT_SWITCHER" login-slot --dry-run <profile>
 node "$ACCOUNT_SWITCHER" login-slot <profile>
 ```
 
-Then ask the user to log in through Codex. After login:
+Then ask the user to log in through Codex. After login, run the `after_login=...` command printed by the CLI. For an existing slot, that command includes `--replace` so the refreshed login state updates the saved profile.
 
 ```bash
-node "$ACCOUNT_SWITCHER" capture <profile> --slot <number>
+node "$ACCOUNT_SWITCHER" capture <profile> --slot <number> --replace
 ```
 
 ### Recovery
