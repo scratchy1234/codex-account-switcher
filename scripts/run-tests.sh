@@ -66,6 +66,9 @@ assert_contains "$TEST_ROOT/capture-dry.out" '^would_capture=alpha-dry'
 node "$SWITCHER" capture alpha --slot 1 >"$TEST_ROOT/capture-alpha.out"
 assert_contains "$TEST_ROOT/capture-alpha.out" '^captured=alpha'
 
+assert_fails node "$SWITCHER" capture '@@@' --dry-run >"$TEST_ROOT/profile-name-invalid.out" 2>&1
+assert_contains "$TEST_ROOT/profile-name-invalid.out" 'profile name must contain at least one letter or number'
+
 write_auth "$TEST_ROOT/beta.json" "beta"
 node "$SWITCHER" import-auth-json beta-dry "$TEST_ROOT/beta.json" --slot 98 --dry-run >"$TEST_ROOT/import-dry.out"
 assert_contains "$TEST_ROOT/import-dry.out" '^would_import=beta-dry'

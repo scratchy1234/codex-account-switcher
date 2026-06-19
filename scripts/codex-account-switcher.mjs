@@ -77,6 +77,7 @@ function saveManifest(manifest) {
 function profileName(raw) {
   const name = String(raw || "").trim().toLowerCase().replace(/[^a-z0-9._-]/g, "-").replace(/-+/g, "-");
   if (!name || name === "." || name === ".." || name.startsWith(".")) die("invalid profile name");
+  if (/^[._-]+$/.test(name)) die("profile name must contain at least one letter or number");
   if (name.length > 80) die("profile name must be 80 characters or fewer");
   return name;
 }
