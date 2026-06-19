@@ -160,6 +160,7 @@ codex-account-switcher questions
 
 ```text
 codex-account-switcher/
+├── .github/workflows/ci.yml
 ├── README.md
 ├── README.zh-CN.md
 ├── LICENSE
@@ -169,9 +170,22 @@ codex-account-switcher/
 ├── references/
 │   └── onboarding.md
 └── scripts/
+    ├── build-release.sh
+    ├── check-public-safety.sh
     ├── codex-account-switcher.mjs
     └── run-tests.sh
 ```
+
+## 维护者发布检查
+
+发布前先检查已跟踪文件和完整 Git 历史，再直接从 Git 对象构建发布包：
+
+```bash
+./scripts/check-public-safety.sh --history
+./scripts/build-release.sh HEAD ./dist
+```
+
+构建命令会运行测试，拦截个人主目录路径、疑似个人邮箱、疑似凭据值和非 GitHub noreply 的提交元数据，并生成不包含本机用户名的标准化归档。
 
 ## FAQ
 

@@ -160,6 +160,7 @@ codex-account-switcher questions
 
 ```text
 codex-account-switcher/
+├── .github/workflows/ci.yml
 ├── README.md
 ├── README.zh-CN.md
 ├── LICENSE
@@ -169,9 +170,22 @@ codex-account-switcher/
 ├── references/
 │   └── onboarding.md
 └── scripts/
+    ├── build-release.sh
+    ├── check-public-safety.sh
     ├── codex-account-switcher.mjs
     └── run-tests.sh
 ```
+
+## Maintainer Release Checks
+
+Before publishing, scan tracked files and Git history, then build from Git objects instead of the working directory:
+
+```bash
+./scripts/check-public-safety.sh --history
+./scripts/build-release.sh HEAD ./dist
+```
+
+The build command runs the test suite, rejects personal home paths, personal-looking email addresses, credential-like values, and non-noreply Git metadata, then creates an archive with normalized owner metadata.
 
 ## FAQ
 
