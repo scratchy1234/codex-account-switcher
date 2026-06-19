@@ -4,6 +4,12 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
+GIT_ROOT="$(git rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ "$GIT_ROOT" != "$ROOT" ]]; then
+  printf 'FAIL: public safety checks require a standalone Git clone at %s\n' "$ROOT" >&2
+  exit 1
+fi
+
 FAILURES=0
 
 report_files() {

@@ -178,7 +178,7 @@ codex-account-switcher/
 
 ## Maintainer Release Checks
 
-Before publishing, scan tracked files and Git history, then build from Git objects instead of the working directory:
+From a standalone clone of this repository, scan tracked files and Git history, then build from Git objects instead of the working directory:
 
 ```bash
 ./scripts/check-public-safety.sh --history

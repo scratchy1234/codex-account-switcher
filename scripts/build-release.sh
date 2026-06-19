@@ -14,6 +14,12 @@ cleanup() {
 }
 trap cleanup EXIT
 
+GIT_ROOT="$(git -C "$ROOT" rev-parse --show-toplevel 2>/dev/null || true)"
+if [[ "$GIT_ROOT" != "$ROOT" ]]; then
+  printf 'FAIL: release builds require a standalone Git clone at %s\n' "$ROOT" >&2
+  exit 1
+fi
+
 git -C "$ROOT" rev-parse --verify "$REF^{commit}" >/dev/null
 "$ROOT/scripts/run-tests.sh"
 "$ROOT/scripts/check-public-safety.sh" --history

@@ -178,7 +178,7 @@ codex-account-switcher/
 
 ## 维护者发布检查
 
-发布前先检查已跟踪文件和完整 Git 历史，再直接从 Git 对象构建发布包：
+在这个仓库的独立 clone 中，发布前先检查已跟踪文件和完整 Git 历史，再直接从 Git 对象构建发布包：
 
 ```bash
 ./scripts/check-public-safety.sh --history
