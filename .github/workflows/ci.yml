@@ -20,5 +20,4 @@ jobs:
       - name: Run tests
         run: ./scripts/run-tests.sh
       - name: Check public tree
-        run: ./scripts/check-public-safety.sh
-
+        run: ./scripts/check-public-safety.sh --history
