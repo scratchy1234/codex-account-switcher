@@ -23,6 +23,27 @@ report_files() {
   fi
 }
 
+report_history_files() {
+  local label="$1"
+  local pattern="$2"
+  local matches
+
+  matches="$(
+    git rev-list --all |
+      while IFS= read -r revision; do
+        git grep -I -l -E "$pattern" "$revision" -- \
+          . \
+          ':(exclude)scripts/check-public-safety.sh' 2>/dev/null || true
+      done |
+      sort -u
+  )"
+
+  if [[ -n "$matches" ]]; then
+    printf 'FAIL: %s\n%s\n' "$label" "$matches" >&2
+    FAILURES=$((FAILURES + 1))
+  fi
+}
+
 report_files \
   "tracked files contain an absolute user-home path" \
   '(/Users|/home)/[^/[:space:]]+/'
@@ -58,6 +79,48 @@ if [[ -n "$SENSITIVE_FILENAMES" ]]; then
 fi
 
 if [[ "${1:-}" == "--history" ]]; then
+  report_history_files \
+    "git history contains an absolute user-home path" \
+    '(/Users|/home)/[^/[:space:]]+/'
+
+  HISTORY_EMAIL_MATCHES="$(
+    git rev-list --all |
+      while IFS= read -r revision; do
+        git grep -I -n -E \
+          '[[:alnum:]._%+-]+@[[:alnum:].-]+\.[[:alpha:]]{2,}' \
+          "$revision" -- \
+          . \
+          ':(exclude)scripts/check-public-safety.sh' 2>/dev/null || true
+      done |
+      grep -Ev '@(example\.(com|org|net)|users\.noreply\.github\.com)' |
+      cut -d: -f1-2 |
+      sort -u || true
+  )"
+  if [[ -n "$HISTORY_EMAIL_MATCHES" ]]; then
+    printf 'FAIL: git history contains an email address outside the allowlist\n%s\n' \
+      "$HISTORY_EMAIL_MATCHES" >&2
+    FAILURES=$((FAILURES + 1))
+  fi
+
+  report_history_files \
+    "git history contains a credential-like value" \
+    '(github_pat_[[:alnum:]_]{20,}|ghp_[[:alnum:]]{20,}|sk-[[:alnum:]_-]{20,}|-----BEGIN (RSA |EC |OPENSSH )?PRIVATE KEY-----|Authorization:[[:space:]]*Bearer[[:space:]]+[[:alnum:]_.+-]{12,})'
+
+  HISTORY_SENSITIVE_FILENAMES="$(
+    git rev-list --all |
+      while IFS= read -r revision; do
+        git ls-tree -r --name-only "$revision" |
+          grep -E '(^|/)(\.env($|\.)|auth\.json$|.*cookies?.*|.*credentials?.*)' |
+          sed "s#^#$revision:#" || true
+      done |
+      sort -u
+  )"
+  if [[ -n "$HISTORY_SENSITIVE_FILENAMES" ]]; then
+    printf 'FAIL: git history contains a sensitive-looking filename\n%s\n' \
+      "$HISTORY_SENSITIVE_FILENAMES" >&2
+    FAILURES=$((FAILURES + 1))
+  fi
+
   NON_NOREPLY=0
   while IFS= read -r email; do
     [[ -z "$email" ]] && continue

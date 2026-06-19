@@ -19,5 +19,5 @@ jobs:
           node-version: "20"
       - name: Run tests
         run: ./scripts/run-tests.sh
-      - name: Check public tree
+      - name: Check public repository
         run: ./scripts/check-public-safety.sh --history
