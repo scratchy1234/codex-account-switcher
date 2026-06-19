@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd -P)"
 REF="${1:-HEAD}"
 OUT_DIR="${2:-$ROOT/dist}"
 ARCHIVE_NAME="codex-account-switcher-skill.tgz"
