@@ -35,7 +35,17 @@ if tar -tzf "$ARCHIVE" | grep -Eq '(^/|(^|/)\.\.(/|$))'; then
   exit 1
 fi
 
-OWNER_GROUPS="$(tar -tvf "$ARCHIVE" | awk '{print $2}' | sort -u)"
+OWNER_GROUPS="$(
+  tar -tvf "$ARCHIVE" |
+    awk '{
+      if ($2 ~ /^[0-9]+$/) {
+        print $3 "/" $4
+      } else {
+        print $2
+      }
+    }' |
+    sort -u
+)"
 if [[ "$OWNER_GROUPS" != "root/root" && "$OWNER_GROUPS" != "0/0" ]]; then
   printf 'FAIL: release archive contains non-normalized owner metadata\n' >&2
   printf '%s\n' "$OWNER_GROUPS" >&2
@@ -44,4 +54,3 @@ fi
 
 printf 'release_archive=%s\n' "$ARCHIVE"
 printf 'release_checksum=%s\n' "$CHECKSUM"
-
