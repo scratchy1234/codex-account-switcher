@@ -156,37 +156,6 @@ codex-account-switcher path
 codex-account-switcher questions
 ```
 
-## Project Structure
-
-```text
-codex-account-switcher/
-├── .github/workflows/ci.yml
-├── README.md
-├── README.zh-CN.md
-├── LICENSE
-├── SKILL.md
-├── agents/
-│   └── openai.yaml
-├── references/
-│   └── onboarding.md
-└── scripts/
-    ├── build-release.sh
-    ├── check-public-safety.sh
-    ├── codex-account-switcher.mjs
-    └── run-tests.sh
-```
-
-## Maintainer Release Checks
-
-From a standalone clone of this repository, scan tracked files and Git history, then build from Git objects instead of the working directory:
-
-```bash
-./scripts/check-public-safety.sh --history
-./scripts/build-release.sh HEAD ./dist
-```
-
-The build command runs the test suite, rejects personal home paths, personal-looking email addresses, credential-like values, and non-noreply Git metadata, then creates an archive with normalized owner metadata.
-
 ## FAQ
 
 **Does this upload auth data anywhere?**
